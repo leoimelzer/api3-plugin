@@ -12,7 +12,6 @@ class LogService {
         if (request.method == 'GET') return
 
         Log log = new Log(data: data, descricao: getLogDescription(request, response))
-
         log.save(flush: true)
     }
 
@@ -25,7 +24,7 @@ class LogService {
     }
 
     private static String getResourceId(HttpServletRequest request) {
-        return request.getParameter("id") ?: request.JSON.id?.toUpperCase()
+        return request.getParameter("id")
     }
 
     private static String getErrors(def response) {
@@ -41,11 +40,16 @@ class LogService {
         String description = ""
 
         Closure<String> getSuccessLogDetails = { String operacao ->
-            "${operacao} do recurso ${getResource(request)} de código identificador ${getResourceId(request)} bem sucedida."
+            if (operacao === "Criação") return "${operacao} do recurso ${getResource(request)} bem sucedida."
+
+            return "${operacao} do recurso ${getResource(request)} de código identificador ${getResourceId(request)} bem sucedida."
         }
 
         Closure<String> getErrorLogDetails = { String operacao ->
-            "Falha na ${operacao.toLowerCase()} do recurso ${getResource(request)} de código identificador ${getResourceId(request)}: ${getErrors(response)}."
+            if (operacao === "Criação")
+                return "Falha na ${operacao.toLowerCase()} do recurso ${getResource(request)}: ${getErrors(response)}."
+
+            return "Falha na ${operacao.toLowerCase()} do recurso ${getResource(request)} de código identificador ${getResourceId(request)}: ${getErrors(response)}."
         }
 
         switch(request.method) {
