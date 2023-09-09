@@ -19,11 +19,11 @@ class LogService {
     private static String getDescricaoLog(HttpServletRequest request, JSONObject response) {
         Closure<String> getDescricaoLogByOperacao = { String operacao ->
             String resourceId = request.getParameter("id") ?: response?.data?.id
-            String situacao = !(response.message || response.errors) ? "Sucesso" : "Falha"
+            String situacao = !(response?.message || response?.errors) ? "Sucesso" : "Falha"
             String log = "${situacao} na ${operacao} do recurso ${getResource(request)}"
 
             if (resourceId) log += " de código identificador ${resourceId}"
-            if (response.success == false) log += ": ${getErrors(response)}"
+            if (response?.success == false) log += ": ${getErrors(response)}"
 
             return log
         }
