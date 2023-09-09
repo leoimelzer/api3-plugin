@@ -10,9 +10,30 @@ class LogService {
 
     void salvarLog(HttpServletRequest request, def response, LocalDate data) {
         if (request.method == 'GET') return
-
-        Log log = new Log(data: data, descricao: getLogDescription(request, response))
+        
+        Log log = new Log(data: data, descricao: getDescricaoLog(request, response))
         log.save(flush: true)
+    }
+
+    private static String getDescricaoLog(HttpServletRequest request, def response) {
+        Closure<String> getDescricaoLogByOperacao = { String operacao ->
+            String resourceId = request.getParameter("id") ?: response.json.data.id
+            String situacao = response.success == true ? "Sucesso" : "Falha"
+            String log = "${situacao} na ${operacao} do recurso ${getResource(request)}"
+
+            if (resourceId) log += " de código identificador ${resourceId}"
+            if (response.success == false) log += ": ${getErrors(response)}"
+
+            return log
+        }
+
+        String descricao = new String()
+
+        if (request.method == 'POST') descricao = getDescricaoLogByOperacao("Criação")
+        else if (request.method == 'PUT') descricao = getDescricaoLogByOperacao("Atualização")
+        else if (request.method == 'DELETE') descricao = getDescricaoLogByOperacao("Remoção")
+
+        return descricao
     }
 
     private static String getResource(HttpServletRequest request) {
@@ -23,10 +44,6 @@ class LogService {
         return resource.toUpperCase()
     }
 
-    private static String getResourceId(HttpServletRequest request) {
-        return request.getParameter("id")
-    }
-
     private static String getErrors(def response) {
         if (!response.json.errors) return response.json.message
 
@@ -34,42 +51,5 @@ class LogService {
         for (LinkedHashMap error : response.json.errors) errors.add("${error.field}: ${error.message}")
 
         return errors.toString()
-    }
-
-    private static String getLogDescription(HttpServletRequest request, def response) {
-        String description = ""
-
-        Closure<String> getSuccessLogDetails = { String operacao ->
-            if (operacao === "Criação") return "${operacao} do recurso ${getResource(request)} bem sucedida."
-
-            return "${operacao} do recurso ${getResource(request)} de código identificador ${getResourceId(request)} bem sucedida."
-        }
-
-        Closure<String> getErrorLogDetails = { String operacao ->
-            if (operacao === "Criação")
-                return "Falha na ${operacao.toLowerCase()} do recurso ${getResource(request)}: ${getErrors(response)}."
-
-            return "Falha na ${operacao.toLowerCase()} do recurso ${getResource(request)} de código identificador ${getResourceId(request)}: ${getErrors(response)}."
-        }
-
-        switch(request.method) {
-            case 'POST':
-                if (response.status == 201) description = getSuccessLogDetails("Criação");
-                else description = getErrorLogDetails("Criação");
-
-                break;
-            case 'PUT':
-                if (response.status == 204) description = getSuccessLogDetails("Atualização");
-                else description = getErrorLogDetails("Atualização");
-
-                break;
-            case 'DELETE':
-                if (response.status == 204) description = getSuccessLogDetails("Remoção");
-                else description = getErrorLogDetails("Remoção");
-
-                break;
-        }
-
-        return description
     }
 }
