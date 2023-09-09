@@ -1,5 +1,7 @@
 package api3.plugin
 
+import api3.plugin.enums.Operation
+import api3.plugin.enums.Situation
 import grails.gorm.transactions.Transactional
 import org.grails.web.json.JSONObject
 
@@ -12,29 +14,26 @@ class LogService {
     void salvarLog(HttpServletRequest request, JSONObject response, LocalDate data) {
         if (request.method == 'GET') return
 
-        Log log = new Log(data: data, descricao: getDescricaoLog(request, response))
+        Log log = new Log(data: data, descricao: getLogDescription(request, response))
         log.save(flush: true)
     }
 
-    private static String getDescricaoLog(HttpServletRequest request, JSONObject response) {
-        Closure<String> getDescricaoLogByOperacao = { String operacao ->
+    private static String getLogDescription(HttpServletRequest request, JSONObject response) {
+        Closure<String> getLogDescriptionByOperation = { Operation operation ->
+            Situation situation = !(response?.message || response?.errors) ? Situation.SUCCESS : Situation.FAILURE
+            String log = "${getSituation(situation)} na ${getOperation(operation)} do recurso ${getResource(request)}"
             String resourceId = request.getParameter("id") ?: response?.data?.id
-            String situacao = !(response?.message || response?.errors) ? "Sucesso" : "Falha"
-            String log = "${situacao} na ${operacao} do recurso ${getResource(request)}"
 
             if (resourceId) log += " de código identificador ${resourceId}"
-            if (response?.success == false) log += ": ${getErrors(response)}"
+            if (situation == Situation.FAILURE) log += ": ${getErrors(response)}"
 
             return log
         }
 
-        String descricao = new String()
+        if (request.method == 'POST') return getLogDescriptionByOperation(Operation.CREATE)
+        if (request.method == 'PUT') return getLogDescriptionByOperation(Operation.UPDATE)
 
-        if (request.method == 'POST') descricao = getDescricaoLogByOperacao("Criação")
-        else if (request.method == 'PUT') descricao = getDescricaoLogByOperacao("Atualização")
-        else if (request.method == 'DELETE') descricao = getDescricaoLogByOperacao("Remoção")
-
-        return descricao
+        return getLogDescriptionByOperation(Operation.DELETE)
     }
 
     private static String getResource(HttpServletRequest request) {
@@ -52,5 +51,18 @@ class LogService {
         for (LinkedHashMap error : response.errors) errors.add("${error.field}: ${error.message}")
 
         return errors.toString()
+    }
+
+    private static String getSituation(Situation situation) {
+        if (situation == Situation.SUCCESS) return "Sucesso"
+
+        return "Falha"
+    }
+
+    private static String getOperation(Operation operation) {
+        if (operation == Operation.CREATE) return "criação"
+        else if (operation == Operation.UPDATE) return "atualização"
+
+        return "remoção"
     }
 }
