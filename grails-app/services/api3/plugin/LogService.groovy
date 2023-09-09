@@ -1,6 +1,7 @@
 package api3.plugin
 
 import grails.gorm.transactions.Transactional
+import org.grails.web.json.JSONObject
 
 import javax.servlet.http.HttpServletRequest
 import java.time.LocalDate
@@ -8,16 +9,16 @@ import java.time.LocalDate
 @Transactional
 class LogService {
 
-    void salvarLog(HttpServletRequest request, def response, LocalDate data) {
+    void salvarLog(HttpServletRequest request, JSONObject response, LocalDate data) {
         if (request.method == 'GET') return
-        
+
         Log log = new Log(data: data, descricao: getDescricaoLog(request, response))
         log.save(flush: true)
     }
 
-    private static String getDescricaoLog(HttpServletRequest request, def response) {
+    private static String getDescricaoLog(HttpServletRequest request, JSONObject response) {
         Closure<String> getDescricaoLogByOperacao = { String operacao ->
-            String resourceId = request.getParameter("id") ?: response.json.data.id
+            String resourceId = request.getParameter("id") ?: response?.data?.id
             String situacao = response.success == true ? "Sucesso" : "Falha"
             String log = "${situacao} na ${operacao} do recurso ${getResource(request)}"
 
@@ -44,11 +45,11 @@ class LogService {
         return resource.toUpperCase()
     }
 
-    private static String getErrors(def response) {
-        if (!response.json.errors) return response.json.message
+    private static String getErrors(JSONObject response) {
+        if (!response.errors) return response.message
 
         ArrayList<String> errors = []
-        for (LinkedHashMap error : response.json.errors) errors.add("${error.field}: ${error.message}")
+        for (LinkedHashMap error : response.errors) errors.add("${error.field}: ${error.message}")
 
         return errors.toString()
     }
